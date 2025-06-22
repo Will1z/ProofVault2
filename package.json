@@ -1,3 +1,8 @@
+   {
+      "scripts": {
+        "build": "tsc && vite build" // or "react-scripts build" for Create React App
+      }
+    }
 {
   "name": "proofvault",
   "private": true,
@@ -51,9 +56,4 @@
     "vite": "^5.4.2",
     "vite-plugin-pwa": "^0.17.0"
   }
-   {
-      "scripts": {
-        "build": "tsc && vite build" // or "react-scripts build" for Create React App
-      }
-    }
 }
