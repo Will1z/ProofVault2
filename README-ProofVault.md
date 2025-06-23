@@ -124,6 +124,8 @@ Leveraging sponsored APIs and tools:
 
 ---
 
+## A subscription model using RevenueCat is planned post-MVP, enabling premium features like blockchain logging, AI-powered verification, and expert co-signatures.
+
 ## 📬 Contact
 
 Built with ❤️ by David Olurinde and Bolt.new 
