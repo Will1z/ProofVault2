@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload as UploadIcon, FileText, Mic, Image, CheckCircle2, Loader2, AlertCircle, Shield, WifiOff, Camera, Video } from 'lucide-react';
+import { Upload as UploadIcon, FileText, Mic, Image, CheckCircle2, Loader2, AlertCircle, Shield, WifiOff, Camera, Video, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '../contexts/WalletContext';
 import { useApp } from '../contexts/AppContext';
@@ -14,6 +14,8 @@ import { deepfakeService } from '../services/deepfakeService';
 import { cloudinaryService } from '../services/cloudinaryService';
 import { elevenlabsService } from '../services/elevenlabsService';
 import { translationService } from '../services/translationService';
+import { firebaseService } from '../services/firebaseService';
+import { revenueCatService } from '../services/revenueCatService';
 import DeepfakeDetector from '../components/DeepfakeDetector';
 import MediaMetadataCard from '../components/MediaMetadataCard';
 import TranscriptionCard from '../components/TranscriptionCard';
@@ -24,6 +26,9 @@ import ContentModerationAlert from '../components/ContentModerationAlert';
 import ExpertVerificationPanel from '../components/ExpertVerificationPanel';
 import CoSignaturePanel from '../components/CoSignaturePanel';
 import EnhancedUpload from '../components/EnhancedUpload';
+import ImageVerificationPanel from '../components/ImageVerificationPanel';
+import PushNotificationManager from '../components/PushNotificationManager';
+import SubscriptionPanel from '../components/SubscriptionPanel';
 
 const Upload: React.FC = () => {
   const { isConnected, walletAddress } = useWallet();
@@ -41,6 +46,8 @@ const Upload: React.FC = () => {
   const [showModerationAlert, setShowModerationAlert] = useState(false);
   const [narrationAudio, setNarrationAudio] = useState<string | null>(null);
   const [translatedContent, setTranslatedContent] = useState<any>(null);
+  const [imageVerificationResult, setImageVerificationResult] = useState<any>(null);
+  const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
   const [progress, setProgress] = useState({
     hashing: false,
     transcribing: false,
@@ -53,6 +60,7 @@ const Upload: React.FC = () => {
     cloudinary: false,
     narration: false,
     translation: false,
+    imageVerification: false,
   });
 
   React.useEffect(() => {
@@ -76,6 +84,19 @@ const Upload: React.FC = () => {
   }, []);
 
   const handleFileSelection = async (file: File, metadata?: any) => {
+    // Check upload limits for free tier
+    if (!revenueCatService.canUseUnlimitedUploads()) {
+      const uploadLimit = revenueCatService.getUploadLimit();
+      // In a real app, check against actual upload count from database
+      const mockCurrentUploads = 4; // Mock value for demo
+      
+      if (mockCurrentUploads >= uploadLimit) {
+        toast.error(`Upload limit reached (${uploadLimit}). Upgrade to premium for unlimited uploads.`);
+        setShowSubscriptionPanel(true);
+        return;
+      }
+    }
+    
     // Run content moderation first
     setProgress(prev => ({ ...prev, moderation: true }));
     try {
@@ -126,8 +147,33 @@ const Upload: React.FC = () => {
     setModerationResult(null);
   };
 
+  const handleImageVerificationComplete = (result: any) => {
+    setImageVerificationResult(result);
+    
+    // Update verification report with image verification results
+    if (verificationReport) {
+      const updatedReport = {
+        ...verificationReport,
+        imageVerification: result,
+        overallTrustScore: Math.round((verificationReport.overallTrustScore + result.overallTrustScore) / 2)
+      };
+      setVerificationReport(updatedReport);
+    }
+  };
+
   const handleProcess = async () => {
     if (!selectedFile || !walletAddress) return;
+
+    // Check if premium features are required
+    const isImageFile = selectedFile.type.startsWith('image/');
+    const needsAIVerification = isImageFile && !revenueCatService.canUseAIVerification();
+    const needsBlockchainLogging = !revenueCatService.canUseBlockchainLogging();
+    
+    if (needsAIVerification || needsBlockchainLogging) {
+      toast.error('Premium features required for full verification');
+      setShowSubscriptionPanel(true);
+      return;
+    }
 
     // Handle offline upload
     if (isOffline) {
@@ -165,6 +211,19 @@ const Upload: React.FC = () => {
         console.error('Cloudinary upload failed:', error);
       }
       setProgress(prev => ({ ...prev, cloudinary: false }));
+
+      // Image verification for image files
+      if (selectedFile.type.startsWith('image/')) {
+        setProgress(prev => ({ ...prev, imageVerification: true }));
+        try {
+          // This would be handled by the ImageVerificationPanel component
+          // We're just setting the progress state here
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (error) {
+          console.error('Image verification failed:', error);
+        }
+        setProgress(prev => ({ ...prev, imageVerification: false }));
+      }
 
       const { proofRecord: record, verificationReport: report } = await processFileWithVerification(
         selectedFile,
@@ -213,6 +272,16 @@ const Upload: React.FC = () => {
       setProofRecord(record);
       setVerificationReport(report);
       setUploadStep(3);
+      
+      // Send push notification
+      try {
+        await firebaseService.notifyVerificationComplete(
+          record.id,
+          report.overallTrustScore
+        );
+      } catch (error) {
+        console.error('Failed to send notification:', error);
+      }
       
     } catch (error) {
       console.error('Processing failed:', error);
@@ -317,6 +386,22 @@ const Upload: React.FC = () => {
         onCancel={handleModerationCancel}
         isVisible={showModerationAlert}
       />
+
+      {/* Subscription Panel (conditionally shown) */}
+      {showSubscriptionPanel && (
+        <SubscriptionPanel 
+          userId={walletAddress}
+          onSubscriptionChange={(isPremium) => {
+            if (isPremium) {
+              toast.success('Premium features activated!');
+              setShowSubscriptionPanel(false);
+            }
+          }}
+        />
+      )}
+
+      {/* Push Notification Manager */}
+      <PushNotificationManager userId={walletAddress} />
 
       {/* Offline Upload Manager */}
       {isOffline && (
@@ -465,6 +550,23 @@ const Upload: React.FC = () => {
                   </div>
                 )}
                 
+                {/* Image Verification Preview (for image files) */}
+                {selectedFile.type.startsWith('image/') && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <h4 className="font-medium text-purple-900 mb-2 flex items-center">
+                      <Zap className="h-4 w-4 mr-2" />
+                      Enhanced Image Verification
+                    </h4>
+                    <ul className="text-sm text-purple-800 space-y-1">
+                      <li>• Google Cloud Vision AI analysis</li>
+                      <li>• OpenAI GPT-4 Vision description</li>
+                      <li>• EXIF metadata extraction</li>
+                      <li>• Geolocation and timestamp verification</li>
+                      <li>• Editing and manipulation detection</li>
+                    </ul>
+                  </div>
+                )}
+                
                 {/* Verification Features Preview */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-900 mb-2">
@@ -524,6 +626,7 @@ const Upload: React.FC = () => {
               {Object.entries({
                 moderation: 'Content safety screening',
                 deepfake: 'Deepfake detection analysis',
+                imageVerification: 'Image verification analysis',
                 hashing: 'Generating SHA-256 hash',
                 transcribing: 'Transcribing audio content',
                 analyzing: 'AI content analysis',
@@ -591,6 +694,14 @@ const Upload: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Image Verification Results (for image files) */}
+            {selectedFile && selectedFile.type.startsWith('image/') && (
+              <ImageVerificationPanel 
+                imageFile={selectedFile}
+                onVerificationComplete={handleImageVerificationComplete}
+              />
+            )}
 
             {/* AI Narration Player */}
             {narrationAudio && (
@@ -683,6 +794,7 @@ const Upload: React.FC = () => {
                   setModerationResult(null);
                   setNarrationAudio(null);
                   setTranslatedContent(null);
+                  setImageVerificationResult(null);
                   setProgress({
                     hashing: false,
                     transcribing: false,
@@ -695,6 +807,7 @@ const Upload: React.FC = () => {
                     cloudinary: false,
                     narration: false,
                     translation: false,
+                    imageVerification: false,
                   });
                 }}
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
