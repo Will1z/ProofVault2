@@ -100,36 +100,35 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </Link>
             </div>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-2 xl:space-x-4 flex-1 justify-center max-w-2xl mx-4">
-              <div className="flex items-center space-x-1 xl:space-x-2 overflow-x-auto scrollbar-hide">
+            {/* Desktop Navigation - Full Button Names */}
+            <nav className="hidden lg:flex items-center space-x-2 flex-1 justify-center max-w-4xl mx-4">
+              <div className="flex items-center space-x-2 overflow-x-auto scrollbar-hide">
                 {navigation.map((item) => {
                   const isActive = location.pathname === item.href;
                   return (
                     <Link
                       key={item.name}
                       to={item.href}
-                      className={`flex items-center space-x-1 xl:space-x-2 px-2 xl:px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-colors relative flex-shrink-0 ${
+                      className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative flex-shrink-0 whitespace-nowrap ${
                         isActive
                           ? 'bg-blue-100 text-blue-700'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                       }`}
                     >
-                      <item.icon className={`h-3 w-3 xl:h-4 xl:w-4 ${isActive ? 'text-blue-700' : item.color}`} />
-                      <span className="hidden xl:inline">{item.name}</span>
-                      <span className="xl:hidden">{item.name.slice(0, 4)}</span>
+                      <item.icon className={`h-4 w-4 ${isActive ? 'text-blue-700' : item.color}`} />
+                      <span>{item.name}</span>
                       {item.name === 'Emergency' && activeReports > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                           {activeReports}
                         </div>
                       )}
                       {item.name === 'Verification' && flaggedReports > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                        <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                           {flaggedReports}
                         </div>
                       )}
                       {item.name === 'Upload' && enhancedFeaturesCount > 3 && (
-                        <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-3 w-3 flex items-center justify-center">
+                        <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
                           <Zap className="h-2 w-2" />
                         </div>
                       )}
@@ -140,7 +139,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </nav>
 
             {/* Right Side Controls */}
-            <div className="flex items-center space-x-2 xl:space-x-4 flex-shrink-0">
+            <div className="flex items-center space-x-2 flex-shrink-0">
               {/* Enhanced Service Status Indicators - Hidden on small screens */}
               <div className="hidden xl:flex items-center space-x-1">
                 {/* Core Services */}
@@ -199,10 +198,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {/* Wallet Connection */}
               {isConnected ? (
                 <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-2 xl:px-3 py-1 rounded-lg text-xs xl:text-sm">
+                  <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span className="font-mono">
-                      {walletAddress?.slice(0, 4)}...{walletAddress?.slice(-4)}
+                      {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
                     </span>
                   </div>
                   <button
@@ -215,10 +214,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               ) : (
                 <button
                   onClick={handleConnectWallet}
-                  className="flex items-center space-x-1 xl:space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-2 xl:px-3 py-1.5 rounded-lg font-medium transition-colors text-xs xl:text-sm"
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors text-sm"
                 >
-                  <Wallet className="h-3 w-3 xl:h-3.5 xl:w-3.5" />
-                  <span className="hidden sm:inline">Connect</span>
+                  <Wallet className="h-3.5 w-3.5" />
+                  <span>Connect Wallet</span>
                 </button>
               )}
 
